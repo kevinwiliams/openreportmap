@@ -162,7 +162,7 @@ class ReportsTableSeeder extends Seeder
                 'disaster_id' => '1',
                 'precise_latitude' => null,
                 'precise_longitude' => null,
-                'location__description' => 'Falmouth Hospital',
+                'location_description' => 'Falmouth Hospital',
                 'severity' => 'severe',
                 'description' => 'Trelawny was among the parishes hardest hit by Hurricane Melissa on Tuesday. Parts of the Falmouth Hospital were damaged, and debris was scattered across Harbour Lane in Falmouth Square.',
                 'source_url' => 'https://x.com/jamaicagleaner/status/1983725623823757774?s=46&t=FZil-rItwI07xT97Gcs6mg',
