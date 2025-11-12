@@ -3,87 +3,112 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreReportRequest;
+use App\Http\Requests\UpdateReportRequest;
+use App\Http\Resources\ReportResource;
 use App\Models\Report;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class ReportController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Report::query();
-
-        if ($request->has('disaster_id')) {
-            $query->where('disaster_id', $request->disaster_id);
+        if (! $request->filled('disaster_id')) {
+            throw ValidationException::withMessages([
+                'disaster_id' => 'The disaster_id query parameter is required.',
+            ]);
         }
 
-        if ($request->has('bounds')) {
-            $bounds = explode(',', $request->bounds);
-            $query->where('precise_latitude', '>=', $bounds[1])
-                ->where('precise_latitude', '<=', $bounds[0])
-                ->where('precise_longitude', '>=', $bounds[3])
-                ->where('precise_longitude', '<=', $bounds[2]);
+        $query = Report::query()
+            ->with(['country', 'parish', 'community', 'utilityType', 'provider'])
+            ->where('disaster_id', $request->string('disaster_id'))
+            ->where(function ($query) {
+                $query->whereNull('status')
+                    ->orWhereRaw('LOWER(status) != ?', ['deleted']);
+            })
+            ->orderByDesc('created_at');
+
+        if ($request->filled('bounds')) {
+            $bounds = array_map('floatval', explode(',', (string) $request->bounds));
+
+            if (count($bounds) === 4) {
+                [$north, $south, $east, $west] = $bounds;
+
+                $query->whereNotNull('precise_latitude')
+                    ->whereNotNull('precise_longitude')
+                    ->whereBetween('precise_latitude', [$south, $north])
+                    ->whereBetween('precise_longitude', [$west, $east]);
+            }
         }
 
-        return $query->get();
+        $features = ReportResource::collection($query->get())->resolve();
+
+        return [
+            'type' => 'FeatureCollection',
+            'features' => $features,
+        ];
     }
 
-    public function store(Request $request)
+    public function store(StoreReportRequest $request)
     {
-        $validatedData = $request->validate([
-            'report_type' => 'required|in:Outage,Blockage,Damage,Relief',
-            'disaster_id' => 'required|exists:disasters,id',
-            'country_code' => 'required|exists:countries,country_code',
-            'parish_code' => 'required|exists:parishes,parish_code',
-            'community_geonames_id' => 'required|exists:communities,geonames_id',
-            'precise_latitude' => 'required|numeric|between:-90,90',
-            'precise_longitude' => 'required|numeric|between:-180,180',
-            'severity' => 'required|in:Low,Medium,High,Critical',
-            'utility_type_id' => 'required_if:report_type,Outage|exists:utility_types,id',
-            'provider_id' => 'required_if:report_type,Outage|exists:providers,id',
-            'relief_point_type' => 'required_if:report_type,Relief|string|max:40',
-            'capacity' => 'nullable|integer|min:0',
-            'current_occupancy' => 'nullable|integer|min:0|lte:capacity',
-            'operating_hours' => 'nullable|string|max:100',
-            'contact_phone' => 'required_if:report_type,Relief|max:40',
-            'source_url' => 'nullable|url|max:255',
-            'reporter_display' => 'nullable|string|max:100',
-        ]);
+        $data = $request->validated();
 
-        $report = Report::create($validatedData);
+        $report = DB::transaction(function () use ($data, $request) {
+            $timestamps = now();
 
-        return response()->json($report, 201);
+            $report = Report::create(array_merge($data, [
+                'created_at' => $timestamps,
+                'updated_at' => $timestamps,
+            ]));
+
+            if ($request->hasFile('photos')) {
+                foreach ($request->file('photos') as $photo) {
+                    $report->addMedia($photo)
+                        ->preservingOriginal()
+                        ->toMediaCollection('photos');
+                }
+            }
+
+            return $report->fresh(['country', 'parish', 'community', 'utilityType', 'provider']);
+        });
+
+        return (new ReportResource($report))->response()->setStatusCode(201);
     }
 
-    public function update(Request $request, Report $report)
+    public function update(UpdateReportRequest $request, Report $report)
     {
-        $validatedData = $request->validate([
-            'severity' => 'in:Low,Medium,High,Critical',
-            'description' => 'string',
-            'status' => 'in:Open,Resolved,Deleted',
-            'confirmation_count' => 'integer',
-            'upvote_count' => 'integer',
-            'downvote_count' => 'integer',
-            'is_flagged' => 'boolean',
-            'capacity' => 'integer|min:0',
-            'current_occupancy' => 'integer|min:0|lte:capacity',
-            'operating_hours' => 'string|max:100',
-            'contact_phone' => 'max:40',
-            'provider_id' => 'exists:providers,id',
-            'utility_type_id' => 'exists:utility_types,id',
-            'relief_point_type' => 'string|max:40',
-            'relief_point_category' => 'string|max:40',
-            'location_description' => 'string',
-        ]);
+        $data = $request->validated();
 
-        $report->update($validatedData);
+        $report = DB::transaction(function () use ($data, $report, $request) {
+            if (! empty($data)) {
+                $report->fill($data);
+            }
 
-        return response()->json($report);
+            $report->updated_at = now();
+            $report->save();
+
+            if ($request->hasFile('photos')) {
+                foreach ($request->file('photos') as $photo) {
+                    $report->addMedia($photo)
+                        ->preservingOriginal()
+                        ->toMediaCollection('photos');
+                }
+            }
+
+            return $report->fresh(['country', 'parish', 'community', 'utilityType', 'provider']);
+        });
+
+        return new ReportResource($report);
     }
 
     public function destroy(Report $report)
     {
-        $report->update(['status' => 'Deleted']);
+        $report->update([
+            'status' => 'Deleted',
+            'updated_at' => now(),
+        ]);
 
         return response()->json(null, 204);
     }
