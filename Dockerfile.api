@@ -50,9 +50,13 @@ RUN composer install --no-dev --prefer-dist --no-interaction --no-scripts --no-a
 
 COPY . .
 
+<<<<<<< codex/update-openreportmap-to-laravel-11-and-material-web-xde0tf
 RUN npm ci \
     && npm run build \
     && composer dump-autoload --optimize \
+=======
+RUN composer dump-autoload --optimize \
+>>>>>>> gpt-open-report-map-init
     && composer run-script post-autoload-dump --no-interaction --no-dev || true
 
 RUN mkdir -p storage/logs storage/framework/cache storage/framework/sessions storage/framework/views bootstrap/cache \
