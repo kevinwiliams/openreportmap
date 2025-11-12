@@ -4,10 +4,18 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Spatie\MediaLibrary\HasMedia;
+use Spatie\MediaLibrary\InteractsWithMedia;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
-class Report extends Model
+class Report extends Model implements HasMedia
 {
     use HasFactory;
+    use InteractsWithMedia;
+
+    public $incrementing = false;
+
+    protected $keyType = 'string';
 
     protected $fillable = [
         'id',
@@ -44,6 +52,19 @@ class Report extends Model
         'reporter_display',
     ];
 
+    protected $casts = [
+        'precise_latitude' => 'float',
+        'precise_longitude' => 'float',
+        'embed_data' => 'array',
+        'confirmation_count' => 'integer',
+        'comment_count' => 'integer',
+        'upvote_count' => 'integer',
+        'downvote_count' => 'integer',
+        'is_flagged' => 'boolean',
+        'capacity' => 'integer',
+        'current_occupancy' => 'integer',
+    ];
+
     public function country()
     {
         return $this->belongsTo(Country::class, 'country_code', 'country_code');
@@ -72,5 +93,27 @@ class Report extends Model
     public function disaster()
     {
         return $this->belongsTo(Disaster::class);
+    }
+
+    public function registerMediaCollections(): void
+    {
+        $this->addMediaCollection('photos')
+            ->useDisk(config('media-library.disk_name', 'uploads'))
+            ->acceptsMimeTypes(['image/jpeg', 'image/png', 'image/webp']);
+    }
+
+    public function registerMediaConversions(?Media $media = null): void
+    {
+        $this->addMediaConversion('preview')
+            ->width(1600)
+            ->height(1600)
+            ->performOnCollections('photos')
+            ->nonQueued();
+
+        $this->addMediaConversion('thumb')
+            ->width(320)
+            ->height(320)
+            ->performOnCollections('photos')
+            ->nonQueued();
     }
 }
