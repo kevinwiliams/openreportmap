@@ -1,24 +1,52 @@
-FROM php:8.3-fpm-alpine
+# syntax=docker/dockerfile:1.6
 
-# Install dependencies for composer
-RUN apk add --no-cache curl unzip mysql-client
+ARG PHP_IMAGE=php:8.3-fpm-alpine
 
-# Install Composer
+FROM --platform=$TARGETPLATFORM ${PHP_IMAGE}
+
+ARG BUILDPLATFORM
+ARG TARGETPLATFORM
+
+ENV APP_ENV=production \
+    COMPOSER_ALLOW_SUPERUSER=1
+
+RUN apk add --no-cache \
+    bash \
+    curl \
+    git \
+    icu-dev \
+    imagemagick \
+    imagemagick-dev \
+    libpng-dev \
+    libwebp-dev \
+    libjpeg-turbo-dev \
+    freetype-dev \
+    libzip-dev \
+    oniguruma-dev \
+    mysql-client \
+    nodejs \
+    npm \
+    unzip \
+    shadow
+
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
+    && docker-php-ext-install -j$(nproc) gd intl pdo pdo_mysql zip \
+    && apk del imagemagick-dev
+
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
 WORKDIR /var/www/html
 
-# Copy composer files and install dependencies
 COPY composer.json composer.lock ./
-RUN composer install --no-dev --no-scripts --no-autoloader
 
-# Copy the rest of the application files
+RUN composer install --no-dev --prefer-dist --no-interaction --no-scripts --no-autoloader
+
 COPY . .
 
-# Run composer dump-autoload
-RUN composer dump-autoload --optimize
+RUN composer dump-autoload --optimize \
+    && composer run-script post-autoload-dump --no-interaction --no-dev || true
 
-# After copying all files, run the post-autoload-dump scripts
-RUN composer run-script post-autoload-dump --no-interaction --no-dev
+RUN mkdir -p storage/logs storage/framework/cache storage/framework/sessions storage/framework/views bootstrap/cache \
+    && chown -R www-data:www-data storage bootstrap/cache
 
 CMD ["php-fpm"]

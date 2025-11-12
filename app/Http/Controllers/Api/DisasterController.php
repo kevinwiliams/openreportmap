@@ -10,6 +10,13 @@ class DisasterController extends Controller
 {
     public function active()
     {
-        return Disaster::where('end_time', '>', now())->orWhereNull('end_time')->get();
+        return Disaster::query()
+            ->select(['id', 'disaster_type', 'name', 'severity', 'start_time', 'end_time', 'alert_message', 'alert_message_es', 'alert_color', 'affected_countries'])
+            ->where(function ($query) {
+                $query->whereNull('end_time')
+                    ->orWhere('end_time', '>', now());
+            })
+            ->orderByDesc('start_time')
+            ->get();
     }
 }
