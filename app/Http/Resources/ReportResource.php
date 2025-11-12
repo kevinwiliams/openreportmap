@@ -21,6 +21,7 @@ class ReportResource extends JsonResource
                 'thumbnail_url' => $media->getUrl('thumb'),
                 'size' => $media->size,
                 'mime_type' => $media->mime_type,
+                'exif' => $media->getCustomProperty('exif'),
             ];
         })->values()->all();
 

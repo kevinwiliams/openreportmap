@@ -1,39 +1,46 @@
 # syntax=docker/dockerfile:1.6
 
-ARG PHP_IMAGE=php:8.3-fpm-alpine
+ARG PHP_IMAGE=php:8.3-apache
 
 FROM --platform=$TARGETPLATFORM ${PHP_IMAGE}
-
-ARG BUILDPLATFORM
-ARG TARGETPLATFORM
 
 ENV APP_ENV=production \
     COMPOSER_ALLOW_SUPERUSER=1
 
-RUN apk add --no-cache \
-    bash \
-    curl \
-    git \
-    icu-dev \
-    imagemagick \
-    imagemagick-dev \
-    libpng-dev \
-    libwebp-dev \
-    libjpeg-turbo-dev \
-    freetype-dev \
-    libzip-dev \
-    oniguruma-dev \
-    mysql-client \
-    nodejs \
-    npm \
-    unzip \
-    shadow
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        curl \
+        ca-certificates \
+        gnupg \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y --no-install-recommends \
+        git \
+        unzip \
+        libpng-dev \
+        libjpeg62-turbo-dev \
+        libfreetype6-dev \
+        libzip-dev \
+        libonig-dev \
+        libicu-dev \
+        libwebp-dev \
+        libmagickwand-dev \
+        libxml2-dev \
+        libexif-dev \
+        build-essential \
+        nodejs \
+    && rm -rf /var/lib/apt/lists/*
 
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
-    && docker-php-ext-install -j$(nproc) gd intl pdo pdo_mysql zip \
-    && apk del imagemagick-dev
+    && docker-php-ext-install -j"$(nproc)" gd intl pdo_mysql zip exif
+
+RUN pecl install imagick \
+    && docker-php-ext-enable imagick
 
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+
+COPY docker/apache/000-default.conf /etc/apache2/sites-available/000-default.conf
+
+RUN a2enmod rewrite headers
 
 WORKDIR /var/www/html
 
@@ -43,10 +50,16 @@ RUN composer install --no-dev --prefer-dist --no-interaction --no-scripts --no-a
 
 COPY . .
 
+<<<<<<< codex/update-openreportmap-to-laravel-11-and-material-web-xde0tf
+RUN npm ci \
+    && npm run build \
+    && composer dump-autoload --optimize \
+=======
 RUN composer dump-autoload --optimize \
+>>>>>>> gpt-open-report-map-init
     && composer run-script post-autoload-dump --no-interaction --no-dev || true
 
 RUN mkdir -p storage/logs storage/framework/cache storage/framework/sessions storage/framework/views bootstrap/cache \
     && chown -R www-data:www-data storage bootstrap/cache
 
-CMD ["php-fpm"]
+CMD ["apache2-foreground"]
