@@ -1,12 +1,12 @@
 <?php
 
 use App\Http\Controllers\Api\CountryController;
-use App\Http\Controllers\Api\ParishController;
 use App\Http\Controllers\Api\DisasterController;
-use App\Http\Controllers\Api\UtilityTypeController;
+use App\Http\Controllers\Api\EmbedPreviewController;
+use App\Http\Controllers\Api\ParishController;
 use App\Http\Controllers\Api\ProviderController;
 use App\Http\Controllers\Api\ReportController;
-use Illuminate\Http\Request;
+use App\Http\Controllers\Api\UtilityTypeController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -21,4 +21,8 @@ Route::get('/parishes/{code}/communities', [ParishController::class, 'communitie
 Route::get('/disasters/active', [DisasterController::class, 'active']);
 Route::get('/utility-types', [UtilityTypeController::class, 'index']);
 Route::get('/providers', [ProviderController::class, 'index']);
-Route::apiResource('/reports', ReportController::class);
+Route::get('/reports', [ReportController::class, 'index']);
+Route::get('/embed/preview', EmbedPreviewController::class);
+Route::post('/reports', [ReportController::class, 'store'])->middleware('throttle:report-submissions');
+Route::patch('/reports/{report}', [ReportController::class, 'update']);
+Route::delete('/reports/{report}', [ReportController::class, 'destroy']);

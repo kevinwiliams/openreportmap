@@ -11,6 +11,10 @@ class ParishController extends Controller
     public function communities($code)
     {
         $parish = Parish::where('parish_code', $code)->firstOrFail();
-        return $parish->communities;
+
+        return $parish->communities()
+            ->select(['id', 'geonames_id', 'name', 'ascii_name', 'latitude', 'longitude', 'population', 'country_code', 'parish_code'])
+            ->orderBy('name')
+            ->get();
     }
 }

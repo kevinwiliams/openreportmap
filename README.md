@@ -30,9 +30,8 @@ A lightweight, mobile-first web app that lets residents drop a pin, pick a repor
 
 4. **Run database migrations and seeders:**
    ```bash
-   docker-compose exec api php artisan migrate --seed
+   docker-compose exec app php artisan migrate --seed
    ```
 
 5. **Access the application:**
-   - **Frontend:** [http://localhost:5173](http://localhost:5173)
-   - **API:** [http://localhost:4000/api](http://localhost:4000/api)
+   - **Application & API:** [http://localhost:4000](http://localhost:4000)
