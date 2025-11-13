@@ -1,15 +1,25 @@
 # syntax=docker/dockerfile:1.6
 
-ARG NODE_IMAGE=node:20-alpine
-
+# Use official Node 20 Alpine image (arm64 compatible)
+ARG NODE_IMAGE=node:20-bookworm
 FROM --platform=$TARGETPLATFORM ${NODE_IMAGE}
 
+# Set working directory
 WORKDIR /app
 
-COPY package.json package-lock.json ./
+# Install dependencies first (using cache layer)
+COPY package*.json ./
 
-RUN npm ci
+RUN npm ci --no-audit --progress=false
 
+# Copy rest of the source code
 COPY . .
 
+# Expose Vite dev port
+EXPOSE 5173
+
+# Enable polling (required for hot reload on Docker Desktop for Mac)
+ENV CHOKIDAR_USEPOLLING=true
+
+# Run development server, listen on all interfaces
 CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]

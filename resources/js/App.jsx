@@ -7,11 +7,6 @@ import ReportDrawer from './components/ReportDrawer';
 import FilterHoverPanel from './components/FilterHoverPanel';
 import ReportDetailsSheet from './components/ReportDetailsSheet';
 
-import '@material/web/top-app-bar/top-app-bar.js';
-import '@material/web/iconbutton/icon-button.js';
-import '@material/web/button/filled-button.js';
-import '@material/web/progress/circular-progress.js';
-
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';

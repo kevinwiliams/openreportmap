@@ -5,17 +5,13 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
-class Community extends Model
+class Parish extends Model
 {
     use HasFactory;
 
-    protected $primaryKey = 'geonames_id';
-    public $incrementing = false;
-    protected $keyType = 'int';
-
     protected $fillable = [
         'geonames_id', 'name', 'ascii_name', 'parish_code', 'latitude',
-        'longitude', 'population', 'country_code'
+        'longitude', 'population', 'community_count', 'country_code'
     ];
 
     public function country()
@@ -23,13 +19,13 @@ class Community extends Model
         return $this->belongsTo(Country::class, 'country_code', 'country_code');
     }
 
-    public function parish()
+    public function communities()
     {
-        return $this->belongsTo(Parish::class, 'parish_code', 'parish_code');
+        return $this->hasMany(Community::class, 'parish_code', 'parish_code');
     }
 
     public function reports()
     {
-        return $this->hasMany(Report::class, 'community_geonames_id', 'geonames_id');
+        return $this->hasMany(Report::class, 'parish_code', 'parish_code');
     }
 }

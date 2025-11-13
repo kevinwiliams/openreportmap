@@ -3,11 +3,13 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.api
+      platforms:
+        - linux/arm64
     container_name: open-report-map-app
     restart: unless-stopped
     ports:
       - "4000:80"
-    env_file: .env.example
+    env_file: .env
     volumes:
       - ./:/var/www/html
       - ./public/uploads:/var/www/html/public/uploads
@@ -16,19 +18,54 @@ services:
     networks:
       - open-report-map-network
 
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+      platforms:
+        - linux/arm64
+    container_name: open-report-map-api
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - ./:/var/www/html
+      - ./public/uploads:/var/www/html/public/uploads
+    depends_on:
+      - mysql
+    networks:
+      - open-report-map-network
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+      platforms:
+        - linux/arm64
+    container_name: open-report-map-web
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_BASE_URL=http://localhost:4000
+      - CHOKIDAR_USEPOLLING=true
+    volumes:
+      - ./:/app
+      - /app/node_modules
+    networks:
+      - open-report-map-network
+
   mysql:
     image: mysql:8.0
+    platform: linux/arm64/v8
     container_name: open-report-map-mysql
     restart: unless-stopped
     ports:
       - "3306:3306"
     environment:
       MYSQL_ROOT_PASSWORD: root
-      MYSQL_ROOT_HOST: "%"
       MYSQL_DATABASE: openreportmap
       MYSQL_USER: orm
       MYSQL_PASSWORD: orm
-      MYSQL_ALLOW_EMPTY_PASSWORD: 1
     volumes:
       - mysql-data:/var/lib/mysql
     networks:
@@ -36,7 +73,7 @@ services:
 
 networks:
   open-report-map-network:
-    driver: "bridge"
+    driver: bridge
 
 volumes:
   mysql-data:
