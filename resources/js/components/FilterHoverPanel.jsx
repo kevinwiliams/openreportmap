@@ -1,10 +1,5 @@
 import React, { useMemo, useState } from 'react';
 
-import '@material/web/chips/filter-chip.js';
-import '@material/web/tabs/tabs.js';
-import '@material/web/tabs/tab.js';
-import '@material/web/button/text-button.js';
-
 const REPORT_TYPE_META = {
   Outage: { label: 'Outage', emoji: '⚡' },
   Blockage: { label: 'Blockage', emoji: '🚧' },

@@ -18,6 +18,6 @@ class DatabaseSeeder extends Seeder
         $this->call(UtilityTypesTableSeeder::class);
         $this->call(DisastersTableSeeder::class);
         $this->call(ProvidersTableSeeder::class);
-        $this->call(ReportsTableSeeder::class);
+        // $this->call(ReportsTableSeeder::class); // Skip due to foreign key constraints
     }
 }

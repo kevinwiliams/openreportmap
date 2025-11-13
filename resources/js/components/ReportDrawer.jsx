@@ -4,21 +4,6 @@ import axios from 'axios';
 import { MapContainer, Marker, TileLayer, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 
-import '@material/web/drawer/drawer.js';
-import '@material/web/button/filled-button.js';
-import '@material/web/button/outlined-button.js';
-import '@material/web/button/text-button.js';
-import '@material/web/textfield/filled-text-field.js';
-import '@material/web/textarea/filled-text-area.js';
-import '@material/web/select/filled-select.js';
-import '@material/web/select/select-option.js';
-import '@material/web/checkbox/checkbox.js';
-import '@material/web/radio/radio.js';
-import '@material/web/chips/assist-chip.js';
-import '@material/web/progress/circular-progress.js';
-import '@material/web/switch/switch.js';
-import '@material/web/iconbutton/icon-button.js';
-
 import 'leaflet/dist/leaflet.css';
 
 const REPORT_TYPES = [
@@ -543,7 +528,8 @@ export default function ReportDrawer({
   };
 
   return (
-    <md-drawer open={open} type="modal" onClosed={onClose} className="report-drawer">
+    <>
+      <md-drawer open={open} type="modal" onClosed={onClose} className="report-drawer">
       <form className="drawer-content" onSubmit={handleSubmit}>
         <div className="section-header">
           <h2>Create report</h2>
@@ -988,7 +974,7 @@ export default function ReportDrawer({
         </div>
       </form>
     </md-drawer>
-    {isMapFullscreen && selectedCommunity
+    {(isMapFullscreen && selectedCommunity)
       ? createPortal(
           <div className="fullscreen-map-overlay" role="dialog" aria-modal="true">
             <div className="fullscreen-map-overlay__backdrop" onClick={() => setIsMapFullscreen(false)} />
@@ -1011,5 +997,6 @@ export default function ReportDrawer({
           document.body,
         )
       : null}
+    </>
   );
 }

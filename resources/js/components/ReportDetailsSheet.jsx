@@ -1,13 +1,5 @@
 import React, { useMemo, useState } from 'react';
 
-import '@material/web/iconbutton/icon-button.js';
-import '@material/web/button/filled-button.js';
-import '@material/web/button/outlined-button.js';
-import '@material/web/chips/assist-chip.js';
-import '@material/web/tabs/tabs.js';
-import '@material/web/tabs/tab.js';
-import '@material/web/progress/circular-progress.js';
-
 import { REPORT_TYPE_META, SEVERITY_META } from './FilterHoverPanel.jsx';
 
 const STATUS_COLORS = {

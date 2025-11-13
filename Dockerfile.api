@@ -1,52 +1,66 @@
 # syntax=docker/dockerfile:1.6
 
-ARG PHP_IMAGE=php:8.3-fpm-alpine
-
+# Use Debian-based image (not Alpine) — PHP 8.3 + Apache
+ARG PHP_IMAGE=php:8.3-apache
 FROM --platform=$TARGETPLATFORM ${PHP_IMAGE}
 
-ARG BUILDPLATFORM
-ARG TARGETPLATFORM
-
+# Set environment variables
 ENV APP_ENV=production \
-    COMPOSER_ALLOW_SUPERUSER=1
+    COMPOSER_ALLOW_SUPERUSER=1 \
+    APACHE_DOCUMENT_ROOT=/var/www/html/public
 
-RUN apk add --no-cache \
-    bash \
-    curl \
-    git \
-    icu-dev \
-    imagemagick \
-    imagemagick-dev \
-    libpng-dev \
-    libwebp-dev \
-    libjpeg-turbo-dev \
-    freetype-dev \
-    libzip-dev \
-    oniguruma-dev \
-    mysql-client \
-    nodejs \
-    npm \
-    unzip \
-    shadow
+# Update Apache document root
+RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf && \
+    sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
 
-RUN docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
-    && docker-php-ext-install -j$(nproc) gd intl pdo pdo_mysql zip \
-    && apk del imagemagick-dev
+# Install dependencies (using arm64-compatible packages)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        git unzip curl ca-certificates gnupg \
+        libpng-dev libjpeg62-turbo-dev libfreetype6-dev \
+        libzip-dev libonig-dev libicu-dev libwebp-dev \
+        libmagickwand-dev libxml2-dev libexif-dev \
+        build-essential nodejs npm \
+    && rm -rf /var/lib/apt/lists/*
 
-RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+# Configure and install PHP extensions
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp && \
+    docker-php-ext-install -j"$(nproc)" gd intl pdo_mysql zip exif && \
+    pecl install imagick && docker-php-ext-enable imagick
+
+# Enable Apache modules
+RUN a2enmod rewrite headers
+
+# Install Composer globally
+RUN curl -sS https://getcomposer.org/installer | php -- \
+    --install-dir=/usr/local/bin --filename=composer
+
+# Copy Apache site configuration (if you have one)
+COPY docker/apache/000-default.conf /etc/apache2/sites-available/000-default.conf
 
 WORKDIR /var/www/html
 
+# Copy Composer files first for caching
 COPY composer.json composer.lock ./
 
+# Install PHP dependencies without dev tools
 RUN composer install --no-dev --prefer-dist --no-interaction --no-scripts --no-autoloader
 
+# Copy application files
 COPY . .
 
-RUN composer dump-autoload --optimize \
-    && composer run-script post-autoload-dump --no-interaction --no-dev || true
+# Install Node dependencies and build frontend
+RUN npm ci --no-audit --progress=false && npm run build
 
-RUN mkdir -p storage/logs storage/framework/cache storage/framework/sessions storage/framework/views bootstrap/cache \
-    && chown -R www-data:www-data storage bootstrap/cache
+# Optimize Composer autoload and run scripts
+RUN composer dump-autoload --optimize && \
+    composer run-script post-autoload-dump --no-interaction --no-dev || true
 
-CMD ["php-fpm"]
+# Ensure proper permissions for Laravel
+RUN mkdir -p storage/logs storage/framework/{cache,sessions,views} bootstrap/cache && \
+    chown -R www-data:www-data storage bootstrap/cache
+
+# Expose Apache port
+EXPOSE 80
+
+# Start Apache
+CMD ["apache2-foreground"]
